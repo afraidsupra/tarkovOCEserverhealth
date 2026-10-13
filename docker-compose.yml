@@ -1,0 +1,12 @@
+services:
+  tarkov-latency:
+    build: .
+    image: afraidsupra/tarkov-oce-server-health:latest
+    container_name: tarkov-oce-server-health
+    env_file: .env
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+    # Optional: expose a healthcheck port if you want an HTTP probe
+    # ports:
+    #   - "127.0.0.1:8080:8080"

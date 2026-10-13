@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Local run artifacts
+state.json
+*.png
+*.log
+isp_latency.json
+refresh.log
+
+# Environment
+.env
+
+# Docker
+data/
+
+# Editors
+.vscode/
+.idea/
+.DS_Store
