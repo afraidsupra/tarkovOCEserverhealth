@@ -8,7 +8,10 @@ import pytz
 
 B = "https://public-as.datapacket.com"
 TZ = pytz.timezone("Australia/Sydney")
-OUT = os.environ.get("CHART_OUT", "/data/tarkov_au_isp_latency.png")
+# Default output lives next to this script (writable by the running user).
+# The Docker deploy still overrides with CHART_OUT=/data/... (mounted volume).
+_HERE = os.path.dirname(os.path.abspath(__file__))
+OUT = os.environ.get("CHART_OUT", os.path.join(_HERE, "out", "tarkov_au_isp_latency.png"))
 
 # Best healthy (lowest non-lost) probe per ISP -> DataPacket Sydney DC (Tarkov host)
 # Overridable via env:  ISPS_LOW="Telstra=210.57.5.137,Optus=211.29.152.162"
@@ -32,8 +35,10 @@ def _parse_isps(env, default):
 
 LOW  = _parse_isps("ISPS_LOW", [("Telstra","210.57.5.137"),("Optus","211.29.152.162"),
                                 ("Aussie Broadband","159.196.255.0"),("TPG Telecom","203.12.160.141"),
-                                ("Vodafone AU","101.119.57.83")])
-HIGH = _parse_isps("ISPS_HIGH", [("iPrimus (Vocus)","203.134.85.40")])
+                                ("Vodafone AU","101.119.57.83"),
+                                ("Spark NZ","210.54.101.86")])
+HIGH = _parse_isps("ISPS_HIGH", [("iPrimus (Vocus)","203.134.85.40"),
+                                 ("One NZ (Vodafone)","203.96.220.25")])
 _PALETTE = ["#4cc2ff","#ff7a45","#39d98a","#c58bff","#ff5d8f","#ffd24a","#7ee0e6","#f6a9c0"]
 COLORS = {name: _PALETTE[i % len(_PALETTE)] for i, (name, _) in enumerate(LOW + HIGH)}
 
@@ -99,12 +104,14 @@ def build(hours=24):
     plt.setp(ax2.get_xticklabels(), rotation=0)
 
     readings = [(name, round(cache[ip][2][-1], 2)) for name, ip in LOW + HIGH]
-    txt = "   ".join(f"{n}  {v:.0f} ms" for n, v in readings)
     gen = time.strftime("%d/%m %H:%M", time.localtime(now))
-    fig.text(0.02, 0.028, txt, ha="left", color="#aeb6c4", fontsize=9.5, family="monospace")
-    fig.text(0.98, 0.028, f"Last {hours} h \u00b7 AEST \u00b7 updated {gen}",
-             ha="right", color="#8a93a5", fontsize=8.5)
-    plt.tight_layout(rect=[0, 0.03, 1, 0.97])
+    # Two-line footer so it scales past ~6 ISPs without colliding.
+    txt = "   ".join(f"{n} {v:.0f}" for n, v in readings)
+    fig.text(0.02, 0.040, "ms:  " + txt, ha="left", color="#aeb6c4",
+             fontsize=8.5, family="monospace")
+    fig.text(0.98, 0.012, f"Last {hours} h \u00b7 AEST \u00b7 updated {gen}",
+             ha="right", color="#8a93a5", fontsize=8)
+    plt.tight_layout(rect=[0, 0.05, 1, 0.97])
     os.makedirs(os.path.dirname(os.path.abspath(OUT)), exist_ok=True)
     plt.savefig(OUT, facecolor=fig.get_facecolor())
     plt.close(fig)
