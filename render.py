@@ -42,9 +42,18 @@ HIGH = _parse_isps("ISPS_HIGH", [("iPrimus (Vocus)","203.134.85.40"),
 _PALETTE = ["#4cc2ff","#ff7a45","#39d98a","#c58bff","#ff5d8f","#ffd24a","#7ee0e6","#f6a9c0"]
 COLORS = {name: _PALETTE[i % len(_PALETTE)] for i, (name, _) in enumerate(LOW + HIGH)}
 
-def _get(url):
-    req = urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0"})
-    return json.loads(urllib.request.urlopen(req, timeout=25).read().decode())
+def _get(url, retries=3):
+    """GET with retry: transient network errors (DNS, refused, timeout) get backoff."""
+    last_err = None
+    for attempt in range(retries):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0"})
+            return json.loads(urllib.request.urlopen(req, timeout=25).read().decode())
+        except Exception as e:
+            last_err = e
+            if attempt < retries - 1:
+                time.sleep(2 * (attempt + 1))  # 2s, 4s backoff
+    raise last_err
 
 def _fetch(ip, start, end):
     d = _get(f"{B}/v1/agr/198/{ip}/{start}/{end}?slave=SYD")["data"]
